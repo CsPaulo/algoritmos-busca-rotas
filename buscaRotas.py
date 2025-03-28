@@ -43,7 +43,7 @@ def bfs(start, goal):
     while queue:
         current, path = queue.popleft()
         if current == goal:
-            return path, len(path) - 1  # Distância como número de passos
+            return path, calculate_total_distance(path)
 
         visited.add(current)
 
@@ -80,13 +80,71 @@ def dfs(start, goal):
     while stack:
         current, path = stack.pop()
         if current == goal:
-            return path, len(path) - 1  # Distância como número de passos
+            return path, calculate_total_distance(path)
 
         visited.add(current)
 
         for neighbor in graph[current]:
             if neighbor not in visited:
                 stack.append((neighbor, path + [neighbor]))
+    return None, None
+
+def depth_limited_search(start, goal, limit):
+    def recursive_dls(current, path, depth):
+        if current == goal:
+            return path, calculate_total_distance(path)
+        if depth == 0:
+            return None, None
+        for neighbor in graph[current]:
+            if neighbor not in path:
+                result = recursive_dls(neighbor, path + [neighbor], depth - 1)
+                if result[0]:
+                    return result
+        return None, None
+
+    return recursive_dls(start, [start], limit)
+
+def iterative_deepening_search(start, goal, max_depth=20):
+    for depth in range(max_depth):
+        result = depth_limited_search(start, goal, depth)
+        if result[0]:
+            return result
+    return None, None
+
+def directional_search(start, goal):
+    current = start
+    path = [current]
+    visited = set()
+
+    while current != goal:
+        visited.add(current)
+        neighbors = graph[current]
+        next_node = None
+        for neighbor in neighbors:
+            if neighbor not in visited:
+                next_node = neighbor
+                break
+        if not next_node:
+            return None, None
+        current = next_node
+        path.append(current)
+    return path, calculate_total_distance(path)
+
+def greedy_search(start, goal):
+    queue = [(heuristic[start], start, [start])]
+    visited = set()
+
+    while queue:
+        _, current, path = heapq.heappop(queue)
+
+        if current == goal:
+            return path, calculate_total_distance(path)
+
+        visited.add(current)
+
+        for neighbor in graph[current]:
+            if neighbor not in visited:
+                heapq.heappush(queue, (heuristic[neighbor], neighbor, path + [neighbor]))
     return None, None
 
 def a_star(start, goal):
@@ -110,6 +168,13 @@ def a_star(start, goal):
                 heapq.heappush(queue, (est, new_cost, neighbor, path + [neighbor]))
     return None, None
 
+# Função para calcular a distância total percorrida
+def calculate_total_distance(path):
+    total_distance = 0
+    for i in range(len(path) - 1):
+        total_distance += graph[path[i]][path[i + 1]]
+    return total_distance
+
 # Menu para o usuário
 def main():
     print("Bem-vindo ao sistema de busca de rotas!")
@@ -125,8 +190,12 @@ def main():
     print("1 - Busca em Largura (BFS)")
     print("2 - Busca de Custo Uniforme")
     print("3 - Busca em Profundidade (DFS)")
-    print("4 - Algoritmo A*")
-    print("5 - Executar todas as buscas")
+    print("4 - Busca em Profundidade Limitada")
+    print("5 - Busca de Aprofundamento Iterativo")
+    print("6 - Busca Direcional")
+    print("7 - Busca Gulosa")
+    print("8 - Algoritmo A*")
+    print("9 - Executar todas as buscas")
     choice = input("Digite o número do algoritmo: ")
 
     if choice == "1":
@@ -139,9 +208,22 @@ def main():
         path, cost = dfs(start, goal)
         print_result("Busca em Profundidade (DFS)", path, cost)
     elif choice == "4":
+        limit = int(input("Digite o limite de profundidade: "))
+        path, cost = depth_limited_search(start, goal, limit)
+        print_result("Busca em Profundidade Limitada", path, cost)
+    elif choice == "5":
+        path, cost = iterative_deepening_search(start, goal)
+        print_result("Busca de Aprofundamento Iterativo", path, cost)
+    elif choice == "6":
+        path, cost = directional_search(start, goal)
+        print_result("Busca Direcional", path, cost)
+    elif choice == "7":
+        path, cost = greedy_search(start, goal)
+        print_result("Busca Gulosa", path, cost)
+    elif choice == "8":
         path, cost = a_star(start, goal)
         print_result("Algoritmo A*", path, cost)
-    elif choice == "5":
+    elif choice == "9":
         execute_all_searches(start, goal)
     else:
         print("Erro: Escolha inválida!")
@@ -161,6 +243,10 @@ def execute_all_searches(start, goal):
         ("Busca em Largura (BFS)", bfs),
         ("Busca de Custo Uniforme", uniform_cost_search),
         ("Busca em Profundidade (DFS)", dfs),
+        ("Busca em Profundidade Limitada", lambda s, g: depth_limited_search(s, g, 10)),
+        ("Busca de Aprofundamento Iterativo", iterative_deepening_search),
+        ("Busca Direcional", directional_search),
+        ("Busca Gulosa", greedy_search),
         ("Algoritmo A*", a_star),
     ]
     for name, func in algorithms:
